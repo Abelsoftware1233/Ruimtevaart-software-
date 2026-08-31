@@ -35,7 +35,7 @@ Draai `sudo ./deploy.sh` opnieuw na code-wijzigingen — het script is idempoten
 (update van bestanden, dependencies, en herstart van de service).
 
 **Nginx** (reverse proxy naar `127.0.0.1:3333` + TLS voor
-`melkweg.abelsoftware123.com`) wordt hier bewust niet opgezet — dat regel je zelf.
+`melkweg.***********.com`) wordt hier bewust niet opgezet — dat regel je zelf.
 Zorg dat de DNS van `melkweg.abelsoftware123.com` naar het IP van deze server wijst.
 
 ## Wat het doet
