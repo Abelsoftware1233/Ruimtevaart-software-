@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zonnestelsel — Live</title>
+<style>
+  :root{
+    --bg: #04050a;
+    --panel-bg: rgba(10, 12, 22, 0.72);
+    --line: rgba(255,255,255,0.08);
+    --text: #e8ecf7;
+    --text-dim: #8791ab;
+    --accent: #e8a13a;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; width: 100%; height: 100%;
+    background: var(--bg);
+    overflow: hidden;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    color: var(--text);
+  }
+  #scene-container {
+    position: fixed; inset: 0;
+  }
+  #scene-container canvas { display: block; }
+
+  .hud {
+    position: fixed;
+    z-index: 10;
+    pointer-events: none;
+  }
+  .hud * { pointer-events: auto; }
+
+  #title-block {
+    top: 22px; left: 26px;
+    font-weight: 300;
+    letter-spacing: 0.5px;
+  }
+  #title-block h1 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+    background: linear-gradient(120deg, #fff, #a8c0ff 60%, #e8a13a);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  #title-block .datetime {
+    margin-top: 4px;
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    font-variant-numeric: tabular-nums;
+  }
+
+  #controls {
+    bottom: 22px; left: 26px;
+    background: var(--panel-bg);
+    backdrop-filter: blur(14px);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 14px 18px;
+    min-width: 260px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+  }
+  #controls .row {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 10px;
+  }
+  #controls .row:last-child { margin-bottom: 0; }
+  #controls label {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    width: 88px;
+    flex-shrink: 0;
+  }
+  #controls input[type=range] {
+    flex: 1;
+    accent-color: var(--accent);
+  }
+  #speed-value {
+    font-size: 0.72rem;
+    color: var(--accent);
+    width: 78px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    flex-shrink: 0;
+  }
+  .btn {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid var(--line);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+  .btn:hover { background: rgba(255,255,255,0.14); }
+  .btn.active { background: var(--accent); color: #1a1206; border-color: var(--accent); }
+
+  #legend {
+    top: 22px; right: 26px;
+    background: var(--panel-bg);
+    backdrop-filter: blur(14px);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 14px 16px;
+    max-height: 70vh;
+    overflow-y: auto;
+    min-width: 190px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+  }
+  #legend h2 {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: var(--text-dim);
+    margin: 0 0 10px 0;
+    font-weight: 600;
+  }
+  .planet-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 6px 4px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+  .planet-row:hover { background: rgba(255,255,255,0.06); }
+  .planet-row.selected { background: rgba(255,255,255,0.1); }
+  .swatch {
+    width: 12px; height: 12px; border-radius: 50%;
+    flex-shrink: 0;
+    box-shadow: 0 0 6px currentColor;
+  }
+  .planet-row .name { font-size: 0.82rem; }
+  .planet-row .dist {
+    margin-left: auto;
+    font-size: 0.68rem;
+    color: var(--text-dim);
+    font-variant-numeric: tabular-nums;
+  }
+
+  #info-panel {
+    bottom: 22px; right: 26px;
+    background: var(--panel-bg);
+    backdrop-filter: blur(14px);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 16px 20px;
+    min-width: 230px;
+    display: none;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+  }
+  #info-panel.visible { display: block; }
+  #info-panel h3 {
+    margin: 0 0 8px 0;
+    font-size: 1.05rem;
+    text-transform: capitalize;
+  }
+  #info-panel .stat {
+    display: flex; justify-content: space-between;
+    font-size: 0.78rem;
+    padding: 3px 0;
+    border-bottom: 1px dashed var(--line);
+    color: var(--text-dim);
+  }
+  #info-panel .stat span:last-child { color: var(--text); }
+
+  #loading {
+    position: fixed; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    flex-direction: column;
+    gap: 14px;
+    background: var(--bg);
+    z-index: 100;
+    transition: opacity 0.6s ease;
+  }
+  #loading .spinner {
+    width: 42px; height: 42px;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.15);
+    border-top-color: var(--accent);
+    animation: spin 0.9s linear infinite;
+  }
+  #loading p { color: var(--text-dim); font-size: 0.85rem; letter-spacing: 0.5px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  #hint {
+    bottom: 22px; left: 50%; transform: translateX(-50%);
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    background: var(--panel-bg);
+    backdrop-filter: blur(14px);
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    padding: 7px 16px;
+    white-space: nowrap;
+  }
+
+  @media (max-width: 720px) {
+    #legend { max-width: 42vw; min-width: 140px; }
+    #controls { min-width: 200px; }
+    #hint { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div id="loading">
+  <div class="spinner"></div>
+  <p>Baanposities berekenen…</p>
+</div>
+
+<div id="scene-container"></div>
+
+<div class="hud" id="title-block">
+  <h1>Zonnestelsel — Live</h1>
+  <div class="datetime" id="datetime-display">—</div>
+</div>
+
+<div class="hud" id="legend">
+  <h2>Hemellichamen</h2>
+  <div id="legend-list"></div>
+</div>
+
+<div class="hud" id="controls">
+  <div class="row">
+    <label>Tijdsnelheid</label>
+    <input type="range" id="speed-slider" min="0" max="4" step="1" value="1">
+    <span id="speed-value">1 dag/sec</span>
+  </div>
+  <div class="row">
+    <button class="btn active" id="play-pause-btn">⏸ Pauzeer</button>
+    <button class="btn" id="reset-btn">Nu</button>
+    <button class="btn" id="topview-btn">Bovenaanzicht</button>
+  </div>
+</div>
+
+<div class="hud" id="info-panel">
+  <h3 id="info-name">—</h3>
+  <div class="stat"><span>Afstand tot zon</span><span id="info-dist">—</span></div>
+  <div class="stat"><span>Straal</span><span id="info-radius">—</span></div>
+  <div class="stat"><span>Omlooptijd</span><span id="info-period">—</span></div>
+</div>
+
+<div class="hud" id="hint">sleep om te draaien · scroll om te zoomen · klik op een planeet</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="script.js"></script>
+</body>
+</html>
